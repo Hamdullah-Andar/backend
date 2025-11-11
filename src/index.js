@@ -3,6 +3,7 @@
 import dotenv from "dotenv";
 
 import connectDB from "./db/index.js";
+import { app } from "./app.js";
 // Cannot find module 'D:\Projects\Tutorials\Chai aur Code\04 BackEnd\express-work\03backend\src\db\index' imported from D:\Projects\Tutorials\Chai aur Code\04 BackEnd\express-work\03backend\src\index.js
 // we may get above error which will be resolved by adding .js and the end of /db/index.js
 
@@ -28,7 +29,33 @@ dotenv.config({
 // it experemental falg was used in early 16 or 17 version of NodeJs, and it is not required in 18 and greater NodeJS version 
 
 // import and executed connectDB() as below
-connectDB();
+connectDB()
+.then(() => {
+  app.listen(process.env.PORT || 8000, () => {
+    console.log(`Server is running at port : ${process.env.PORT}`);
+  })
+
+  // Assignment
+  app.on("error", (error) => {
+    console.log("Error while connecting to backend : ", error);
+  })
+
+})
+.catch((err) => {
+  console.log('MONGODB connection failed : ', err);
+})
+// as connectDB is async method it returns a promise
+// as we know that we can have .then() and .catch() after the returned promise as above 
+
+// using express we focus mainly on two major things one of it is Request and other is Response 
+// in request of express, we mainly focus on two things, one of it is req.params and other is req.body
+
+// when data come from a URL it mostly comes from req.params, when we see a question mark (?) then "search" key then equal to sign "=" then a term in URL, it is called params
+// in req.body we can have data in different format like form or json etc, we need to do some configuration for it, we don't need body-parser now as it is already included in express, it was used in previous version 
+// we can data from cookies too, we will cover how to set cookies on user broswer securely and how to read it.
+// we need cookie-parser and cors packages to install 
+// most of the time we use middleware through app.use(), 
+// we can also use app.use() for configuration setting
 
 // below is a good aproach, but we can have another approach too as above where we create db connection file in db folder and import it in index.js file
 
