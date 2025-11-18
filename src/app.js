@@ -51,6 +51,21 @@ app.use(cookieParser())
 // when all the middleware checkes completes, and the res is sent, then the flag gets discarded 
 
 
+// routes (we have to import our routes here, as express needs your middleware to be loaded before your route declaration)
+// route are import like this in the middle of app.js file, it get segregated
+// we have to import it after the cookiePaser, urlencoded and others
+import userRouter from "./routes/user.routes.js"
+
+// route declaration:
+// to use the route we have to follow some good practice 
+// as we were writing the app.get, we had route and contoller both in app.js, but we have route and controller separate 
+// now we have to use the "use" middlware to bring the routes as below
+// we can name the route anything, here we have used "/users"
+// we want to activate the userRouter when we hit "/users" route
+// we will add api/v1 at the starting of all routes in real world project as below 
+// so our route on localhost will be like localhost:3000/api/v1/users 
+app.use("/api/v1/users", userRouter)
+// localhost:8000/api/v1/users will not Work, it will pass it to userRouter and find for other route inside userRouter
 
 export { app }
 

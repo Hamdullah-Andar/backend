@@ -6,7 +6,9 @@
 // and we can return the requestHandler execution directly as below
 // we will create a Promise and in .resolve section we will call the requestHandler and in .catch section will display error
 const asyncHandler = (requestHandler) => {
-  (req, res, next) => {
+  // I have recived error when the asyncHandler was not returning the inner function
+  // after adding return it worked fine
+  return (req, res, next) => {
     Promise.resolve(requestHandler(req, res, next)).catch((err) => next(err));
   };
 };

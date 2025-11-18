@@ -7,9 +7,12 @@ import { app } from "./app.js";
 // Cannot find module 'D:\Projects\Tutorials\Chai aur Code\04 BackEnd\express-work\03backend\src\db\index' imported from D:\Projects\Tutorials\Chai aur Code\04 BackEnd\express-work\03backend\src\index.js
 // we may get above error which will be resolved by adding .js and the end of /db/index.js
 
-dotenv.config({
-  path: "./env",
-});
+// dotenv.config({
+//   path: "./env",
+// });
+// above dotenv.config({path: "./env",}); show error but below works fine, because in above config file is searching for env file which is not present
+// but dotenv.config() works fine as it search for .env file by default
+dotenv.config();
 
 // As early as possible in your application, import and configure dotenv:
 // because other part of our program may have used value from dotenv
