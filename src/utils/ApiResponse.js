@@ -12,6 +12,8 @@ class ApiResponse {
     }
 }
 
+export { ApiResponse }
+
 // we have statusCode is server 
 // informational is from 100 - 199
 // successful is from 200 - 299
