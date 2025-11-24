@@ -47,6 +47,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // 1. we can get user detials from frontend which come from form or json in req.body and we can destructure it
     const { fullName, email, username, password } = req.body; 
+    console.log("Just study the req.body : ", req.body);
     console.log("User email details : ", email);
 
     // 2. check if fullName is empty 
@@ -70,7 +71,7 @@ const registerUser = asyncHandler(async (req, res) => {
     // we can use .then() and .catch() as mongoose queries are thenable as well
     // A Promise is a built-in JavaScript object that represents the eventual result of an asynchronous operation.
     // A thenable is any object that has a then method, but it doesn’t have to be a full Promise.
-    const existedUser = User.findOne({ $or: [ { email }, { username } ] })
+    const existedUser = await User.findOne({ $or: [ { email }, { username } ] })
     if(existedUser){
         throw new ApiError(409, "User already exists with this email or username");
     }
@@ -84,8 +85,18 @@ const registerUser = asyncHandler(async (req, res) => {
     // if we are sending multiple images, we can access it using req.files
     // we have to check if req.file is present or not 
     const avararLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    // if we don't upload coverImage and access it without using optional chaining, we get the error of "Cannot read properties of undefined (reading '0')" 
+    // which can be fixed by adding optional chainging as below
+    // const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
 
+    // we can use below way as well to fix "Cannot read properties of undefined (reading '0')" error as below 
+    let coverImageLocalPath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length >  0){
+        coverImageLocalPath = req.files.coverImage[0].path
+    }
+
+    console.log("Just study req.files : ", req.files)
     if(!avararLocalPath){
         throw new ApiError(400, "Avatar image is required");
     }
@@ -97,6 +108,7 @@ const registerUser = asyncHandler(async (req, res) => {
     // as uploadToCloudinary is async function, we can use await with it
     // we have to pass local path of image and folder name where we want to save image in cloudinary
     const avatar = await uploadOnCloudinary(avararLocalPath);
+    console.log("Avatar upload response : ", avatar);
     const coverImage = await uploadOnCloudinary(coverImageLocalPath);
     if(!avatar){
         throw new ApiError(400, "Avatar image is required");
@@ -136,3 +148,21 @@ const registerUser = asyncHandler(async (req, res) => {
 
 export { registerUser }
 // we have to create a route when to run above controller 
+
+
+// we can use form-data in body section of postman allow us to upload files as well
+
+// we can select content-type at the three dot section of the right hand side of of adding values
+
+// to exclude some data from submitting in the form, we can unckeck it at the left hand side
+
+// we got error user already exist, because of not using await in front of User.findOne({ $or: [ { email }, { username } ] })
+
+// we should use await untill finishing the task of findOne other execution will go to the next line without waiting for finding the User in User.findOne({ $or: [ { email }, { username } ] })
+
+// we should use the keys in postman the same as we have used it in mongodb collection
+
+// the _id which we get on each recored created on mongodb is in bson format not json format
+
+// to configure postman, we can create folder and keep base url (which is common in all route) in environemt as use it in the starting of the url 
+// we should write {{ then you will see the environemet name click on it. it will be added 

@@ -1,6 +1,5 @@
 import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
-import path from 'path';
 
 // (async function() {
 
@@ -45,12 +44,25 @@ import path from 'path';
 
 // above code is for testing cloudinary setup for the cloudinary configuration 
 
-cloudinary.config({ 
-    // this is our cloudinary configuration 
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
-    api_key: process.env.CLOUDINARY_API_KEY, 
-    api_secret: process.env.CLOUDINARY_API_SECRET // Click 'View API Keys' above to copy your API secret
-});
+// cloudinary.config({ 
+//     // // this is our cloudinary configuration 
+//     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+//     api_key: process.env.CLOUDINARY_API_KEY,
+//     api_secret: process.env.CLOUDINARY_API_SECRET
+//     // cloud_name: "dmxk0jqjx", 
+//     // api_key: "118814125617271",
+//     // api_secret: "O4PKpNKYg7jMzE-xL1pFeaZ7pR8"
+    
+// });
+
+// When you had the cloudinary.config() call inside your utils/cloudinary.js, it was being executed too early (before dotenv.config() had loaded your .env file). That meant Cloudinary was initialized with undefined values, and later uploads failed with “Must supply api_key”.
+// By moving the configuration into index.js (right after dotenv.config()), you guaranteed that:
+// .env is loaded first.
+// process.env.CLOUDINARY_* variables are populated.
+// Cloudinary receives the correct credentials when you configure it.
+
+
+
 
 // below is our organized file upload to cloudinary 
 const uploadOnCloudinary = async (localFilePath) => {
@@ -62,7 +74,10 @@ const uploadOnCloudinary = async (localFilePath) => {
             resource_type: "auto"
         })
         // file uploaded successfully 
-        console.log("File is uploaded on cloudinary", response.url)
+        // console.log("File is uploaded on cloudinary : ", response.url)
+        console.log("Just Study the response of cloudinary : ", response)
+        // now we want to remove it from our database as well, as we not remove it earlier just for testing purpose
+        fs.unlinkSync(localFilePath)
         return response
 
     } catch (error) {

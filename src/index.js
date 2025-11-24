@@ -1,6 +1,14 @@
 // require('dotenv').config()
 // require('dotenv').config({path: './env'})
 import dotenv from "dotenv";
+dotenv.config();
+
+import { v2 as cloudinary } from "cloudinary";
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 import connectDB from "./db/index.js";
 import { app } from "./app.js";
@@ -12,7 +20,8 @@ import { app } from "./app.js";
 // });
 // above dotenv.config({path: "./env",}); show error but below works fine, because in above config file is searching for env file which is not present
 // but dotenv.config() works fine as it search for .env file by default
-dotenv.config();
+// dotenv.config();
+// I have added dotenv at the top of the file to make sure that all the environment variables are loaded before any other module is imported
 
 // As early as possible in your application, import and configure dotenv:
 // because other part of our program may have used value from dotenv
