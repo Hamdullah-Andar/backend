@@ -21,6 +21,31 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
+const generateAccessAndRefreshTokens = async (userId) => {
+    try {
+        // find user by id as below
+        const user = await User.findById(userId)
+        // generate access token using generateAccessToken method as below
+        const accessToken = user.generateAccessToken()
+        // generate refresh token using generateRefreshToken method as below
+        const refreshToken = user.generateRefreshToken()
+
+        // put refreshToken to database as below
+        user.refreshToken = refreshToken
+        // sava it in the database 
+        // while saving it to database, we have to use our password, 
+        // but here we have not used our password instead we can pass { validateBeforeSave: false } as below
+        // it mean don't validate the save request, (I know what am i doing)
+        await user.save({ validateBeforeSave: false })        
+
+        // now we have to return access and refresh token to user 
+        return { accessToken, refreshToken }
+
+    } catch (error) {
+        throw new ApiError(500, "Some thing went, while generating access and referesh token ")
+    }
+} 
+
 // asyncHandler is a higher order function which accept another function
 // as we know that when we write a method through express we have access to error, req, res, next
 const registerUser = asyncHandler(async (req, res) => {
@@ -146,7 +171,133 @@ const registerUser = asyncHandler(async (req, res) => {
 
 });
 
-export { registerUser }
+const loginUser = asyncHandler(async (req, res) => {
+
+    // we have to folow below algorithm for loging a user 
+    // 1. get email or username and password from req.body
+    // 2. check email or username avalibility
+    // 3. find the user 
+    // 4. check user password 
+    // 5. send access and refresh token to user
+    // 6. send access and refresh token in secure cookies
+
+    const { email, username, password } = req.body
+
+    // if(!username || !email){ 
+    // as above logic was not valid for checking if none of username or email was available the error should be thrown
+    // if(!(username || email)){
+    //     throw new ApiError(400, "username or email is required")
+    // }
+    // or we can use below code to to check if neither username or email are sent in body error should be thrown 
+    if(!username && !email){
+        throw new ApiError(400, "username or email is required")
+    }
+
+    const user = await User.findOne({
+        $or: [{ username }, { email }]
+    })
+
+    if(!user){
+        throw new ApiError(404, "User does not exist")
+    }
+
+    // as we have isPasswordCorrect, we will use it 
+    // we will pass the user recieved password 
+    // User is availabe therough mongoose  
+    // but our defined method as isPasswordCorrect is accessable through user 
+
+    const isPasswordValid = await user.isPasswordCorrect(password)
+
+    if(!isPasswordValid){
+        throw new ApiError(401, "Invalid User credentials")
+    }
+
+    // as we will use access and refresh token generation alot, hence we will create a separate method for it as generateAccessAndRefreshTokens above
+    const { accessToken, refreshToken }= await generateAccessAndRefreshTokens(user._id)
+
+    // currently the user does not have accessToken/refreshToken in it's refreshToken field
+    // we have to update the user object or make another query to fetch updated user data from database which has a value in refreshToken 
+    // we have to decide whether we have to make a query or update user object 
+    // we will make a query to fetch user data as below as limit password and refreshToken
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+
+    // now will send the cookies, we have to design options, options in nothing but an object as below
+    // after making the httpOnly and secure true in options it make the cookies updatable in server only, it can not be modified in frontend
+    // it is accessable in frontend, but not Modifiable in frontend, it is updatable in server only   
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    // now we want to return the response send refresh token in setting cookies as below, we can set as many cookies as we want
+    // we can set cookies using cookie() method, which accept a Key, a value and option which we have defined above 
+    // and finally add json response to the res as below 
+    // the reason why we are sending accessToken and refreshToken again in json, while we have set it in cookies, is that the user might want to save accessToken and refreshToken in localStorage 
+    // while sending it in json is not good practice, but if user want to store it in localStorage we can send it as below in json 
+    // as ApiResponse expect statusCode, data, and message, we passing it to ApiResponse as below 
+    return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+        new ApiResponse(200,
+            {
+                user: loggedInUser, accessToken, refreshToken
+            },
+            "User logged In Successfully"
+        )
+    )
+})
+// we can create it's related route in user.routes.js
+
+const logoutUser = asyncHandler(async(req, res) =>{
+
+        // we have to do below step to logout user 
+        // 1. clear the cookies 
+        // 2. remove the refreshToken in Uer model 
+        
+        // we have get userId from User model using a middleware which we use in multiple places
+        // we have used "upload" middleware in register route in user.routes.js and used "use" middlware in ap 
+        // using the app.use(cookieParser()) in app.js we can access cookie in req and res as we have accessed it in loginUser controller as res.cookie
+        // hence we can access it in req too. as req.cookie 
+        // we can define our own middleware here as well, in fact we will design our own middlware as auth.middleware
+
+        // to remove the user refreshToken we can use findByIdAndUpdate which is used to find and update user 
+        // we will use req.user data which we have assinged from user value in verifyJWT middleware 
+        // and set the refreshToken to undefined 
+        // and use new: ture to update the change value in response
+        await User.findByIdAndUpdate(
+            req.user._d,
+            {
+                $set: {
+                    refreshToken: undefined
+                }
+            },
+            {
+                new: true
+            }
+        )
+
+        // refreshToken is removed from database, 
+        // now we want to clear the cookie, foe clearing cookie we need below options as well
+        // in return we send res and clear accessToken and refreshToken from cookie in json we send empty object 
+        const options = {
+            httpOnly: true,
+            secure: true
+        }
+
+        return res
+        .status(200)
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshToken", options)
+        .json(new ApiResponse(200, {}, "User logout Successfully"))
+
+        // as we may use all the verifyJWT log direclty in logoutUser, but for reusability to have put it in auth.middleware 
+        
+})
+// we can create it's related route in user.routes.js
+
+export { registerUser, loginUser, logoutUser }
 // we have to create a route when to run above controller 
 
 

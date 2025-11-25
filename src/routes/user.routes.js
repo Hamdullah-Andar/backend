@@ -1,10 +1,11 @@
 import { Router } from "express";
-import { registerUser } from "../controllers/user.controller.js";
+import { loginUser, logoutUser, registerUser } from "../controllers/user.controller.js";
 // we have to import router from express 
 
 // as we were creating app from express , here we have to create route from Router
 
 import { upload } from "../middlewares/multer.middleware.js";
+import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
@@ -29,5 +30,13 @@ router.route('/register').post(
     ]),
     registerUser
 )
+
+router.route("/login").post(loginUser)
+
+// secured routes which will be accessable after login
+// we have used verifyJWT to verify the user token 
+// we can use as many middlware as we want
+// as we have assigned req.user = user, hence we have access to req.user in logoutUser controller 
+router.route("/logout").post(verifyJWT, logoutUser)
 
 export default router
