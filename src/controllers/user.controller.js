@@ -418,7 +418,168 @@ const refreshAccessToken = asyncHandler(async(req, res) => {
 
 })
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken }
+const changeCurrentPassword = asyncHandler(async(req, res) => {
+    
+    // steps to follow for changing user password
+    // 1. get oldPassword, newPassword from body 
+    // 2. get current user information by id from req.user._id which we have assigned in verifyJWT
+    // 3. check user current password whether it is correct or not using isPasswordCorrect method in user model 
+    // 4. throw error if password is not correct which is test by isPasswordCorrect 
+    // 5. if old password is enter correctly then, update user.password with newPassword, and updating user.password with newPassword will be encrypt automaticaly as we have use userSchema.pre method in User model 
+    // the userSchema.pre method will run after saving updating the password, which can be done by using user.save({validateBeforeSave: false})
+    // in user.save({validateBeforeSave: false}) the {validateBeforeSave: false} means Save this document without running validation.
+    // 6. return user the response of updating the password 
+
+    const { oldPassword, newPassword } = req.body
+
+    const user = await User.findById(req.user._id)
+
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+
+    if(!isPasswordCorrect){
+        throw new ApiError(400, "Invalid old password")
+    }
+
+    user.password = newPassword
+    await user.save({validateBeforeSave: false})
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, {}, "Password changed Successfully")
+    )
+
+})
+
+const getCurrentUser = asyncHandler(async(req, res) => {
+    return res
+    .status(200)
+    .json(new ApiResponse(200, req.user, "Current user data fetched successfully"))
+
+})
+
+const updateAccountDetails = asyncHandler(async(req, res) =>{
+
+    // step to follow for updating user details 
+    // 1. get user data from req.body 
+    // 2. check if all updating data is available, if not throw error 
+    // 3. run findByIdAndUpdate to find and update and use select method to limit password
+    // 4. return the response to the user 
+    const {fullName, email } = req.body
+
+    if(!fullName || !email){
+        throw new ApiError(400, "All fields are required ")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                fullName, 
+                email
+            }
+        },
+        {
+            new: true
+        }
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Account details updated successfully"))
+})
+// an advice 
+// create separate controller for updating a document or image. ex: a user document or image and give an update image to hit that controller to update the image
+
+const updateUserAvatar = asyncHandler(async(req, res) => {
+    // now we have to add user profile/file update route 
+    // in it route we have to use multer and auth middleware in mind 
+
+    // steps to follow for updating avatar 
+    // 1. get new avatar file using multer from req.file 
+    // 2. update user new avatar (we can directly save the avatat to database, but we want to save it in cloudinary)
+    // 3. send response to user 
+    const avatarLocalPath = req.file?.path
+
+    if(!avatarLocalPath){
+        throw new ApiError(400, "Avatar file is missing")
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+    if(!avatar.url){
+        throw new ApiError(400, "Error while uploading avatar")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                avatar: avatar.url
+            }
+        },
+        {
+            new: true
+        }
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user, "Avatar Image updated successfully")
+    )
+})
+
+const updateUserCoverImage = asyncHandler(async(req, res) => {
+    // now we have to add user profile/file update route 
+    // in it route we have to use multer and auth middleware in mind 
+
+    // steps to follow for updating coverImage 
+    // 1. get new coverImage file using multer from req.file 
+    // 2. update user new coverImage (we can directly save the avatat to database, but we want to save it in cloudinary)
+    // 3. send response to user 
+    const coverImageLocalPath = req.file?.path
+
+    if(!coverImageLocalPath){
+        throw new ApiError(400, "Cover Image file is missing")
+    }
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+    if(!coverImage.url){
+        throw new ApiError(400, "Error while uploading coverImage")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                coverImage: coverImage.url
+            }
+        },
+        {
+            new: true
+        }
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user, "Cover Image updated successfully")
+    )
+})
+
+export { 
+    registerUser,
+    loginUser,
+    logoutUser,
+    refreshAccessToken,
+    changeCurrentPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar,
+    updateUserCoverImage
+}
 // we have to create a route when to run above controller 
 
 
