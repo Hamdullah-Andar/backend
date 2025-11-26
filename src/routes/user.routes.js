@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { loginUser, logoutUser, registerUser } from "../controllers/user.controller.js";
+import { loginUser, logoutUser, refreshAccessToken, registerUser } from "../controllers/user.controller.js";
 // we have to import router from express 
 
 // as we were creating app from express , here we have to create route from Router
@@ -39,4 +39,5 @@ router.route("/login").post(loginUser)
 // as we have assigned req.user = user, hence we have access to req.user in logoutUser controller 
 router.route("/logout").post(verifyJWT, logoutUser)
 
+router.route("/refresh-token").post(refreshAccessToken)
 export default router

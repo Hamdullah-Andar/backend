@@ -37,7 +37,7 @@ export const verifyJWT = asyncHandler(async(req, _, next) => {
         // if we dont have user we can tell the user as invalid token
         // as we have not found any user using the id which is taken from decodedToken 
         if(!user){
-            // TO_DO:  we will have discuss here about frontend
+            
             throw new ApiError(401, "Invalid Access Token")
         }
     

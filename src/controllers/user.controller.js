@@ -20,6 +20,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken"
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
@@ -297,7 +298,127 @@ const logoutUser = asyncHandler(async(req, res) =>{
 })
 // we can create it's related route in user.routes.js
 
-export { registerUser, loginUser, logoutUser }
+const refreshAccessToken = asyncHandler(async(req, res) => {
+
+    // steps to follwo 
+    // 1. get refresh token from cookies 
+    // 2. compare accessToken with refresh token 
+    // 3. decode Refresh token 
+    // 4. get user information by decoded refresh token _id 
+    // 5. compare refresh token with the refresh token in database 
+    // 6. if token are the same generate new access and refresh token 
+    // 7. send accessToken and refreshToken to user in res 
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
+
+    if(!incomingRefreshToken){
+        // below throw error is actually is API response (it is error response)
+        // sending error is essential here to avoid fake 200 response, we get 200 ok reponse and the application not working as expected which is very bad
+        throw new ApiError(401, "Unauthorized request")
+    }
+
+    try {
+        const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
+    
+        const user = await User.findById(decodedToken?._id)
+    
+        if(!user){
+            throw new ApiError(401, "Invalid Refresh token")
+        }
+    
+        if(incomingRefreshToken !== user?.refreshToken){
+            throw new ApiError(401, "Refresh token is expired or used")
+        }
+    
+        const options = {
+            httpOnly: true,
+            secure: true
+        }
+    
+        const {accessToken, newRefreshToken} = await generateAccessAndRefreshTokens(user._id)
+    
+        return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", newRefreshToken, options)
+        .json(
+            new ApiResponse(
+                200,
+                {accessToken, refreshToken: newRefreshToken},
+                "Access Token Refreshed"
+            )
+        )
+    } catch (error) {
+        throw new ApiError(401, error.message || "Invalid Refresh Token")
+    }
+
+    // refreshAccessToken preparation/converstaion
+    // as we have set cookie in loginUser 
+
+    // checking it using postman will give us cookies in cookie tab of the response
+
+    // in cookies tab we will see accessToken and refreshToken row and other values
+
+    // we will add all route in user collection to give it to frontend user after exporting it
+
+    // logout can be handle in get, but we have handled it using post
+
+    // Access token and refresh Token:
+    // is used for not using the password agian for login
+
+    // access token is short lived: will not be store any where, it will be availabe for the user
+
+    // "refresh token"/"session storage" is long lived: it will be store in database
+
+    // instead of loging the user can request refreshing the access token
+
+    // Access and Refresh Token will be the same
+
+    // when the user access token expires, the user can request for refreshing access token, through an endpoint to refresh the access token (validating the access token)
+
+    // for refreshing the access token, the invalid access token will be compared with refresh token, if both are the same, both access token and refresh token will renewed, the new refresh token will be saved in database, and the new access token will be give to user to access resource
+
+    // it is similar to login again
+
+
+    // AI comment on Access and Refresh Token 
+    // is access and refresh token will be the same
+
+    // Short answer: nope — they’re always different, and for good reasons.
+
+    // Here’s the quick rundown:
+
+    // 🔑 Access Token
+
+    // Short-lived (minutes)
+
+    // Used on every request to protected routes
+
+    // If stolen, the damage window is small
+
+    // 🔁 Refresh Token
+
+    // Long-lived (days/weeks)
+
+    // Stored more securely (httpOnly cookie, DB, etc.)
+
+    // Used ONLY to get a new access token
+
+    // Never sent on normal API calls
+
+    // Why they must be different
+
+    // Security:
+    // If they were the same and an attacker stole it, they'd gain long-term access.
+
+    // Responsibilities differ:
+    // One authenticates requests. The other renews authentication.
+
+    // Rotation:
+    // Refresh tokens are often rotated or invalidated in the DB.
+
+})
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken }
 // we have to create a route when to run above controller 
 
 
