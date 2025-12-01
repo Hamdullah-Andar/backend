@@ -571,6 +571,154 @@ const updateUserCoverImage = asyncHandler(async(req, res) => {
     )
 })
 
+const getUserChannelProfile = asyncHandler(async(req, res) =>{
+    
+    // step to get user channel profile 
+    // 1. get username from params (url) 
+    // 2. check if we dont have username in params 
+    // 3. instead of finding user by username, we can use aggregation directly 
+    // note: aggregation accept array and return array 
+    // 4. in first pipeline we use $match to find the user which matches the username (we will get single user record)
+    // 5. in second pipeline we will use $lookup to join User to Subscription and count the subscriber base on channel
+    // note: localField belong to User model and foreignField belong to Subscription model
+    // 6. in third pipeline we will use $lookup to join User to Subscription and count the subscribedTo base on subscriber
+    // 7. in fourth pipeline we have to add subscriber and subscribedTo using $addFields, 
+    // Note: using $size we can get the count of subscriber and subscribedTo 
+    // and we will use cond which accept 3 parameter "if then and else" to find if the user (me) is subscribed to channel or not
+    // using $in we can find if im in the subscriber list of not, $in can check value in both array and object
+    // 7. in fifth pipeline we can use $project to show only desired vlaue by giving them 1 value and making it's flag on
+    // Note: aggregation pipeline return an array which has one/many objects
+    // 8. check the length of channel, to confirm if it is available or not 
+    // 9. return the first value of channel array 
+
+    // we have to join subscription model to user model, where we want all subscription information to be available in user model, and it is called left join
+
+    // aggregation pipline has many stages, and each stages are called pipline which process documents
+
+    // each stage perform an operation on the input document (if we filter data of a model on some criteria, that filtered value will be input for next pipline)
+
+    // we can write aggregate after the model, and aggregate accepts an array, which includes many object, and each object is a stage/pipline.
+
+    // for example: we have two model
+    // one is book and other is author
+
+    // book model includes below documents
+    // _id: 1
+    // title: "The Great Book"
+    // author_id: 100
+    // genre: "Classic"
+
+    // where author_id is another model id (here it is author id)
+
+    // and our author includes below documents:
+    // _id: 100
+    // name: "Author name 100"
+    // birth_year: 1893
+
+    // if left join the complete author document will be shown in author_id of books model
+
+    // usually in first pipeline we can use $match which is siilar to where class (but we dont need it right now)
+
+    // we will use lookup for joinging the tables as $lookup, currently we are trying to join books model to Author model
+    // in lookup we will have from (which document to join, ex: "authors"), localField (field which is books table ex: "author_id"), foreignField (field which is author table, ex: "_id") and as (name the resutl value, ex: author_details)
+
+    // the result value will be an array, we will get the first value of the array as object
+
+    // we can store the result value in variable in try to return the first item of array
+
+    // or we can use another pipeline as below
+
+    // $addFields: which add a field which is not available in either of the table ex: taking first name and last name and combining them as fullname in a new field
+
+    // we can manipulate the result value of first pipline using an expression as below (which will give us the first element of the array, which is the author details object)
+    // $addFields {
+    //     author_details: {
+    //         $first: "$author_details"
+    //     }
+    // }	
+
+    // or we use below manipulation for returning the author_details value as below (which will also give us the same value as above pipline, giving us the first element of the author_details array)
+    // $addFields {
+    //     author_details: {
+    //         $arrayElemAt: ["$author_details", 0]
+    //     }
+    // }
+
+    // study about the $project, $populate and more in documentation
+    // $project is used to show the specified fields only
+
+    const { username } = req.params
+
+    if(!username?.trim()){
+        throw new ApiError(400, "username is not missing")
+    }
+
+    const channel = await User.aggregate([
+        {
+            $match: {
+                username: username?.toLowerCase()
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscribers"
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+        {
+            $addFields: {
+                subscribersCount: {
+                    $size: "$subscribers"
+                },
+                channelsSubscribedToCount: {
+                    $size: "$subscribedTo"
+                },
+                isSubscribed: {
+                    $cond: {
+                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                fullName: 1,
+                username: 1,
+                subscribersCount: 1, 
+                channelsSubscribedToCount: 1,
+                isSubscribed: 1,
+                avatar: 1,
+                coverImage: 1,
+                email: 1
+            }
+        }
+    ])
+    console.log("Channel Value : ", channel)
+
+    if(!channel?.length){
+        throw new ApiError(400, "Channel does not exists")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, channel[0], "User channel fetched successfully")
+    )
+
+})
+
 export { 
     registerUser,
     loginUser,
@@ -580,7 +728,8 @@ export {
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getUserChannelProfile
 }
 // we have to create a route when to run above controller 
 
