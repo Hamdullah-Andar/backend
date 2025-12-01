@@ -719,6 +719,70 @@ const getUserChannelProfile = asyncHandler(async(req, res) =>{
 
 })
 
+const getWatchHistory = asyncHandler(async(req, res) => {
+    
+    // step to getWatchHistory 
+    // 1. first pipeline is $match to find the user using it's id
+    // Note: req.user._id gives us a sting but mongodb convert it to mongodb id 
+    // Using aggregation pipline we have to convert the id ourself to mongodb id as new mongoose.Types.ObjectId(req.user._id)
+    // 2. in second pipline we have to use $lookup to join vedios and user tables 
+    // Note: as we need nested pipline we can add pipline key inside the $lookup and nested pipeline which is an array and it accept stage/pipeline inside it
+    // hence we will use $lookup inside the nested pipline and add $lookup from users and use another pipline inside nested $lookup and use $project stage/pipline in it to show only required values 
+    // 3. return the response as user[0].watchHistory, as we are intersted in watchHistory only, not other data of user
+
+    // as we store vedio id in watchHistory, 
+    // as we need watchHistory, which we can do using $lookup to have vedio id in user watchHistory, but as we can see we have owner inside vedio model too which is user again, we have to use lookup once again to get/join user details
+    // hence we need to do nested lookup
+
+    const user = await User.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [
+                                {
+                                    $project: {
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields: {
+                            owner: {
+                                $first: "$owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user[0].watchHistory, "Watch History fetched successfully")
+    )
+})
+
 export { 
     registerUser,
     loginUser,
@@ -729,7 +793,8 @@ export {
     updateAccountDetails,
     updateUserAvatar,
     updateUserCoverImage,
-    getUserChannelProfile
+    getUserChannelProfile,
+    getWatchHistory
 }
 // we have to create a route when to run above controller 
 
