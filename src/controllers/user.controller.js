@@ -270,8 +270,13 @@ const logoutUser = asyncHandler(async(req, res) =>{
         await User.findByIdAndUpdate(
             req.user._d,
             {
-                $set: {
-                    refreshToken: undefined
+                // $set: {
+                //     refreshToken: undefined
+                // }
+
+                // instead of set refreshToken to undefined which does not remove the token, we can use unset and set flag of to one as refreshToken: 1, which will work fine (remove the refreshToken from the document)
+                $unset: {
+                    refreshToken: 1
                 }
             },
             {
