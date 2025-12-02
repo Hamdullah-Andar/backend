@@ -268,7 +268,7 @@ const logoutUser = asyncHandler(async(req, res) =>{
         // and set the refreshToken to undefined 
         // and use new: ture to update the change value in response
         await User.findByIdAndUpdate(
-            req.user._d,
+            req.user._id,
             {
                 // $set: {
                 //     refreshToken: undefined
