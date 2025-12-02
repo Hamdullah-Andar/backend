@@ -62,7 +62,7 @@ router.route("/update-account").patch(verifyJWT, updateAccountDetails)
 // in below route we have to use verifyJWT first then we have to use multer 
 router.route("/avatar").patch(verifyJWT, upload.single("avatar"), updateUserAvatar)
 
-router.route("/cover-image").patch(verifyJWT, upload.single("converImage"), updateUserCoverImage)
+router.route("/cover-image").patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage)
 
 // when we are taking value from params, we have to use the same name which we use in controller which we destructor from req.params
 router.route("/c/:username").get(verifyJWT, getUserChannelProfile)
